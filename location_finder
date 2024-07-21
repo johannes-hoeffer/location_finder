@@ -2,6 +2,7 @@ import requests
 import pandas as pd
 import numpy as np
 import tkinter as tk
+from PIL import ImageTk, Image
 from functools import cache
 
 
@@ -15,7 +16,7 @@ def get_cities():
     url = URL
     html = requests.get(url).content
     cities = pd.read_html(html)[-1]
-    cities.Population = cities.Population.str.split('[', expand=True)[0]
+    cities.Population = cities.Population.str.split('[', expand=True)[0].str.replace(',', '').replace(' ', '')
     return cities
 
 
@@ -27,6 +28,9 @@ def get_random_city(df : pd.DataFrame) -> pd.Series:
     city = df.iloc[random]
     return city
 
+def get_city_image(name : str):
+    return ImageTk.PhotoImage(Image.open(f'./src/{name}.jpg').resize((300, 250)))
+
 
 def load_city():
     '''
@@ -34,25 +38,36 @@ def load_city():
     '''
     cities = get_cities()
     city = get_random_city(cities)
+    try:
+        img = get_city_image(city.Name)
+    except FileNotFoundError:
+        img = get_city_image('europe')
+    image_label.config(image=img)
+    image_label.image = img
     city_label.config(
         text=f'''Your random city is {city.Name}!
 
-        {city.Name} is in {city['Member state'].replace('Template:', '')} and has a population of {city.Population}
+        {city.Name} is in {city['Member state'].replace('Template:', '')} and has a population of {int(city.Population):,d}.
         ''')
+    
+
 
 # Setup window
 window = tk.Tk()
 window.geometry("600x600")
 window.title('Random Holiday Selector')
 
+img=get_city_image('europe')
+
 # Define window content
 load_city_button = tk.Button(window, text='Select random city', command=load_city)
 city_label = tk.Label(window, text='No city chosen yet')
 exit_button = tk.Button(window, text='Quit', command=window.destroy)
+image_label = tk.Label(window, image=img)
 
 # arrange elements
 city_label.place(relx=.3, rely=.15)
-load_city_button.place(relx=.25, rely=.6)
-exit_button.place(relx=.7, rely=.6)
-
+image_label.place(relx=.25, rely=.25)
+load_city_button.place(relx=.25, rely=.7)
+exit_button.place(relx=.7, rely=.7)
 window.mainloop()
