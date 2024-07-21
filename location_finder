@@ -1,0 +1,41 @@
+import requests
+import pandas as pd
+import numpy as np
+import tkinter as tk
+
+
+def get_cities():
+    url = 'https://list.fandom.com/wiki/List_of_cities_in_the_European_Union_with_more_than_100,000_inhabitants'
+    html = requests.get(url).content
+    cities = pd.read_html(html)[-1]
+    cities.Population = cities.Population.str.split('[', expand=True)[0]
+    return cities
+
+
+def get_random_city(df : pd.DataFrame) -> pd.Series:
+    random = np.random.randint(0, len(df))
+    city = df.iloc[random]
+    return city
+
+def load_city():
+    cities = get_cities()
+    city = get_random_city(cities)
+    city_label.config(
+        text=f'''Your random city is {city.Name}!
+
+        {city.Name} is in {city['Member state'].replace('Template:', '')} and has a population of {city.Population}
+        ''')
+
+window = tk.Tk()
+window.geometry("600x600")
+window.title('Random Holiday Selector')
+
+load_city_button = tk.Button(window, text='Select random city', command=load_city)
+city_label = tk.Label(window, text='No city chosen yet')
+exit_button = tk.Button(window, text='Quit', command=window.destroy)
+
+city_label.place(relx=.3, rely=.15)
+load_city_button.place(relx=.25, rely=.6)
+exit_button.place(relx=.7, rely=.6)
+
+window.mainloop()
