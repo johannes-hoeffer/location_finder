@@ -16,7 +16,7 @@ def get_cities():
     url = URL
     html = requests.get(url).content
     cities = pd.read_html(html)[-1]
-    cities.Population = cities.Population.str.split('[', expand=True)[0].str.replace(',', '').replace(' ', '')
+    cities.Population = cities.Population.str.split('[', expand=True)[0].str.replace(',', '').replace('\xa02', '')
     return cities
 
 
