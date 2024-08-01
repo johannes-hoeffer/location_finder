@@ -70,7 +70,7 @@ def load_city():
     image_label.config(image=img)
     image_label.image = img
 
-    
+
 # Setup window
 window = tk.Tk()
 window.geometry("600x600")
@@ -89,7 +89,7 @@ max_population_label = tk.Label(window, text='Maximum population')
 max_population_entry = tk.Entry(window)
 
 # arrange elements
-city_label.place(relx=.3, rely=.15)
+city_label.place(relx=.22, rely=.15)
 image_label.place(relx=.25, rely=.25)
 min_population_label.place(relx=.1, rely=.7)
 min_population_entry.place(relx=.4, rely=.7)
