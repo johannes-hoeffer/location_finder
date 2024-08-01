@@ -16,8 +16,22 @@ def get_cities():
     url = URL
     html = requests.get(url).content
     cities = pd.read_html(html)[-1]
-    cities.Population = cities.Population.str.split('[', expand=True)[0].str.replace(',', '').replace('\xa02', '')
+    cities.Population = cities.Population.str.split('[', expand=True)[0].str.replace(',', '').replace(r'\xa0', '', regex=True).replace(' ', '').replace(r'\.', '', regex=True).astype(int)
     return cities
+
+
+def get_min_pop():
+    try:
+        return int(min_population_entry.get())
+    except ValueError:
+        return 100_000
+
+
+def get_max_pop():
+    try:
+        return int(max_population_entry.get())
+    except ValueError:
+        return 10_000_000
 
 
 def get_random_city(df : pd.DataFrame) -> pd.Series:
@@ -28,30 +42,35 @@ def get_random_city(df : pd.DataFrame) -> pd.Series:
     city = df.iloc[random]
     return city
 
+
 def get_city_image(name : str):
     return ImageTk.PhotoImage(Image.open(f'./src/{name}.jpg').resize((300, 250)))
 
 
 def load_city():
     '''
-    Select a city und generate describing text
+    Select a city and generate describing text
     '''
     cities = get_cities()
-    city = get_random_city(cities)
+    cities = cities[(cities.Population >= get_min_pop()) & (cities.Population <= get_max_pop())]
+    try:
+        city = get_random_city(cities)
+        city_label.config(
+            text=f'''Your random city is {city.Name}!
+
+            {city.Name} is in {city['Member state'].replace('Template:', '')} and has a population of {int(city.Population):,d}.
+        ''')
+    except ValueError:
+        city = pd.Series({'Name': 'europe'})
+        city_label.config(text='No matching city')
     try:
         img = get_city_image(city.Name)
     except FileNotFoundError:
         img = get_city_image('europe')
     image_label.config(image=img)
     image_label.image = img
-    city_label.config(
-        text=f'''Your random city is {city.Name}!
 
-        {city.Name} is in {city['Member state'].replace('Template:', '')} and has a population of {int(city.Population):,d}.
-        ''')
     
-
-
 # Setup window
 window = tk.Tk()
 window.geometry("600x600")
@@ -64,10 +83,18 @@ load_city_button = tk.Button(window, text='Select random city', command=load_cit
 city_label = tk.Label(window, text='No city chosen yet')
 exit_button = tk.Button(window, text='Quit', command=window.destroy)
 image_label = tk.Label(window, image=img)
+min_population_label = tk.Label(window, text='Minimum population')
+min_population_entry = tk.Entry(window)
+max_population_label = tk.Label(window, text='Maximum population')
+max_population_entry = tk.Entry(window)
 
 # arrange elements
 city_label.place(relx=.3, rely=.15)
 image_label.place(relx=.25, rely=.25)
-load_city_button.place(relx=.25, rely=.7)
-exit_button.place(relx=.7, rely=.7)
+min_population_label.place(relx=.1, rely=.7)
+min_population_entry.place(relx=.4, rely=.7)
+max_population_label.place(relx=.1, rely=.75)
+max_population_entry.place(relx=.4, rely=.75)
+load_city_button.place(relx=.25, rely=.8)
+exit_button.place(relx=.7, rely=.8)
 window.mainloop()
