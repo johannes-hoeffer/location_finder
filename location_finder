@@ -4,9 +4,23 @@ import numpy as np
 import tkinter as tk
 from PIL import ImageTk, Image
 from functools import cache
+from dataprep.clean import clean_country
 
 
 URL = 'https://list.fandom.com/wiki/List_of_cities_in_the_European_Union_with_more_than_100,000_inhabitants'
+country_map = {'ROU' : 'Romania',
+               'POL' : 'Poland',
+               'HUN' : 'Hungary',
+               'DEN' : 'Denmark',
+               'SWE' : 'Sweden',
+               'LAT' : 'Latvia',
+               'GRE' : 'Greece',
+               'LTU' : 'Lithuania',
+               'POR' : 'Portugal',
+               'SVK' : 'Slovakia',
+               'BUL' : 'Bulgaria',
+               'SLO' : 'Slovenia',
+               'CYP' : 'Cyprus'}
 
 @cache
 def get_cities():
@@ -16,7 +30,10 @@ def get_cities():
     url = URL
     html = requests.get(url).content
     cities = pd.read_html(html)[-1]
+    cities.columns = [col.replace(' ', '_') for col in cities.columns]
     cities.Population = cities.Population.str.split('[', expand=True)[0].str.replace(',', '').replace(r'\xa0', '', regex=True).replace(' ', '').replace(r'\.', '', regex=True).astype(int)
+    cities.Member_state = cities.Member_state.str.replace('Template:', '')
+    cities = clean_country(cities, 'Member_state', input_format=("name", "alpha-3"))
     return cities
 
 
@@ -44,7 +61,7 @@ def get_random_city(df : pd.DataFrame) -> pd.Series:
 
 
 def get_city_image(name : str):
-    return ImageTk.PhotoImage(Image.open(f'./src/{name}.jpg').resize((300, 250)))
+    return ImageTk.PhotoImage(Image.open(f'./images/{name}.jpg').resize((300, 250)))
 
 
 def load_city():
@@ -52,13 +69,17 @@ def load_city():
     Select a city and generate describing text
     '''
     cities = get_cities()
-    cities = cities[(cities.Population >= get_min_pop()) & (cities.Population <= get_max_pop())]
+    checked_countries = []
+    for country in country_list:
+        exec(f'if selector{country.replace(" ", "")}.get(): checked_countries.append("{country}")')
+
+    cities = cities[(cities.Population >= get_min_pop()) & (cities.Population <= get_max_pop()) & (cities.Member_state.isin(checked_countries))]
     try:
         city = get_random_city(cities)
         city_label.config(
             text=f'''Your random city is {city.Name}!
 
-            {city.Name} is in {city['Member state'].replace('Template:', '')} and has a population of {int(city.Population):,d}.
+            {city.Name} is in {country_map.get(city.Member_state, city.Member_state)} and has a population of {int(city.Population):,d}.
         ''')
     except ValueError:
         city = pd.Series({'Name': 'europe'})
@@ -71,12 +92,33 @@ def load_city():
     image_label.image = img
 
 
+def popup_countries():
+    popup = tk.Toplevel()
+    popup.wm_title("Country selection")
+
+    country_label = tk.Label(popup, text="Choose possible countries")
+    country_label.grid(row=0, column=0)
+
+    i = 1
+    for country in country_list:
+        exec(f'tk.Checkbutton(popup, text="{country_map.get(country, country)}", variable=selector{country.replace(" ", "")}, onvalue=True, offvalue=False).grid(row={i}, sticky=tk.W)')
+        i += 1  
+    
+    select_button = tk.Button(popup, text="Okay", command=popup.destroy)
+    select_button.grid(row=len(country_list) + 1, column=0)
+
+
 # Setup window
 window = tk.Tk()
 window.geometry("600x600")
 window.title('Random Holiday Selector')
 
 img=get_city_image('europe')
+country_list = list(get_cities().Member_state.unique())
+for country in country_list:
+    selector = f'selector{country.replace(" ", "")}'
+    exec(f'{selector} = tk.BooleanVar(window)')
+    exec(f'{selector}.set(True)')
 
 # Define window content
 load_city_button = tk.Button(window, text='Select random city', command=load_city)
@@ -87,6 +129,7 @@ min_population_label = tk.Label(window, text='Minimum population')
 min_population_entry = tk.Entry(window)
 max_population_label = tk.Label(window, text='Maximum population')
 max_population_entry = tk.Entry(window)
+country_button = tk.Button(window, text='Select countries', command=popup_countries)
 
 # arrange elements
 city_label.place(relx=.22, rely=.15)
@@ -96,5 +139,6 @@ min_population_entry.place(relx=.4, rely=.7)
 max_population_label.place(relx=.1, rely=.75)
 max_population_entry.place(relx=.4, rely=.75)
 load_city_button.place(relx=.25, rely=.8)
-exit_button.place(relx=.7, rely=.8)
+exit_button.place(relx=.5, rely=.8)
+country_button.place(relx=.75, rely=.8)
 window.mainloop()
