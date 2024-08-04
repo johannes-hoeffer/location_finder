@@ -33,7 +33,7 @@ def get_cities():
     cities.columns = [col.replace(' ', '_') for col in cities.columns]
     cities.Population = cities.Population.str.split('[', expand=True)[0].str.replace(',', '').replace(r'\xa0', '', regex=True).replace(' ', '').replace(r'\.', '', regex=True).astype(int)
     cities.Member_state = cities.Member_state.str.replace('Template:', '')
-    cities = clean_country(cities, 'Member_state', input_format=("name", "alpha-3"))
+    cities.Member_state = np.where(cities.Member_state.isin(country_map.keys()), cities.Member_state.map(country_map), cities.Member_state)
     return cities
 
 
@@ -114,7 +114,7 @@ window.geometry("600x600")
 window.title('Random Holiday Selector')
 
 img=get_city_image('europe')
-country_list = list(get_cities().Member_state.unique())
+country_list = [country_map.get(country, country) for country in list(get_cities().Member_state.unique())]
 for country in country_list:
     selector = f'selector{country.replace(" ", "")}'
     exec(f'{selector} = tk.BooleanVar(window)')
